@@ -7,16 +7,33 @@ import json
 app = faust.App(
     'retweet',
     broker=['kafka://server1:9092', 'kafka://server2:9092', 'kafka://server3:9092'],
-    value_serializer='json'
+    value_serializer='json',
+    topic_partitions=2
 )
 
 def call_back(key, events):
-    print('call_back')    
-    queue.put(json.dumps({'hashtag':key[0], 'freq':events}))
+    global table_elements_cnt
+    global table_length
+    
+    if table_elements_cnt == 0:
+        table_length = hashtag_summary_table.__sizeof__()
+        queue.delete(queue.key)
+        queue.put({key[0]: events})
+        table_elements_cnt += 1
 
-hashtag_summary_table = app.Table('retweet', default=int, partitions=4,
-                        use_partitioner=True, on_window_close=call_back).tumbling(timedelta(minutes=10), timedelta(minutes=10))
+    elif table_elements_cnt == table_length - 1:
+        queue.put({key[0]: events})
+        table_elements_cnt, table_length = 0, 0
 
+    else:
+        queue.put({key[0]: events})
+        table_elements_cnt += 1
+    
+hashtag_summary_table = app.Table('tweet', default=int, partitions=4,
+                        use_partitioner=True, on_window_close=call_back).\
+                        tumbling(timedelta(seconds=10), timedelta(seconds=10))
+
+table_elements_cnt, table_length = 0, 0
 tweet_topic = app.topic('kafka.tweets')
 
 @app.agent(tweet_topic)

@@ -39,6 +39,7 @@ class Producer():
             return False
         
     def stop(self):
+        print("Kafka Producer Object Stop")
         self.producer.close()
     
     def send_data(self, topic, data):
@@ -65,12 +66,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger()
-
-CONSUMER_KEY = ''
-CONSUMER_SECRET = ''
-
-ACCESS_TOKEN = ''
-ACCESS_TOKEN_SECRET = ''
 
 producer = Producer(bootstrap_servers=['server1:9092', 'server2:9092', 'server3:9092'])
 
